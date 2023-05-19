@@ -22,10 +22,11 @@ parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
 parser.add_argument("--dataset", type=str, default="MIDRC")
-parser.add_argument("--num_channel", type=int, default=3)
+parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=2)
 parser.add_argument("--num_pixel", type=int, default=28)
-parser.add_argument("--model", type=str, default="CNN")
+parser.add_argument("--model", type=str, default="resnet18")
+parser.add_argument("--pretrained", type=bool, default=False)
 
 ## clients
 # parser.add_argument("--num_clients", type=int, default=2)
@@ -93,12 +94,6 @@ def get_data(comm: MPI.Comm):
         if class_name not in class_name_list:
             class_name_list.append(class_name)
 
-    class_map = {}
-    tmpcnt = 0
-    for class_name in class_name_list:
-        class_map[class_name] = tmpcnt
-        tmpcnt += 1  
-
     img_dim = (args.num_pixel, args.num_pixel)
     
     # Root download the data if not already available.
@@ -119,11 +114,12 @@ def get_data(comm: MPI.Comm):
     test_data_label = []
     for idx in range(len(test_data)):
         img_path, class_name = test_data[idx]        
-        img = cv2.imread(img_path)        
-        img = cv2.resize(img, img_dim)       
-        class_id = class_map[class_name]        
+        img = cv2.imread(img_path,cv2.IMREAD_GRAYSCALE)        
+        # img = cv2.imread(img_path)
+        img = cv2.resize(img, img_dim)     
         img_tensor = torch.from_numpy(img) / 255
-        img_tensor = img_tensor.permute(2, 0, 1)
+        img_tensor = torch.reshape(img_tensor,(1,img_dim[0],img_dim[1]))
+        # img_tensor = img_tensor.permute(2, 0, 1)
         print(img_tensor.size())
 
         test_data_input.append(img_tensor.tolist())
@@ -140,7 +136,7 @@ def get_data(comm: MPI.Comm):
 
     # split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
     # NC, CA, IN, TX
-    label = ["NC", "CA", "IN", "TX"]
+    label = ["NC", "CA", "TX", "IN"]
     train_datasets = []
     for i in range(args.num_clients):
 
@@ -148,11 +144,12 @@ def get_data(comm: MPI.Comm):
         train_data_label = []
         for img_path, class_name, state in train_data:
             if state==label[i]:
-                img = cv2.imread(img_path)
+                # img = cv2.imread(img_path)
+                img = cv2.imread(img_path,cv2.IMREAD_GRAYSCALE)
                 img = cv2.resize(img, img_dim)
-                class_id = class_map[class_name]
                 img_tensor = torch.from_numpy(img) / 255
-                img_tensor = img_tensor.permute(2, 0, 1)
+                img_tensor = torch.reshape(img_tensor,(1,img_dim[0],img_dim[1]))
+                # img_tensor = img_tensor.permute(2, 0, 1)
                 train_data_input.append(img_tensor.tolist())
                 train_data_label.append(class_name)
 
