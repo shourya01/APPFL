@@ -367,42 +367,41 @@ def run_server(
             # Do server validation
 
             dir_path = os.getcwd()+"_server_model"
-            # print(dir_path) 
             save_model(server,start_time, loss_fn, num_clients,test_dataloader, cfg, dataset_name)
 
-            # validation_start = time.time()
-            # if cfg.validation == True:
-            #     test_loss, test_accuracy = validation(server, test_dataloader)
-            #     acc.append(test_accuracy)
-            #     if test_accuracy > best_accuracy:
-            #         best_accuracy = test_accuracy
-            #     if cfg.use_tensorboard:
-            #         # Add them to tensorboard
-            #         writer.add_scalar("server_test_accuracy", test_accuracy, global_step)
-            #         writer.add_scalar("server_test_loss", test_loss, global_step)
-            # cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
-            # cfg["logginginfo"]["PerIter_time"] = time.time() - local_start_time
-            # cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
-            # cfg["logginginfo"]["test_loss"] = test_loss
-            # cfg["logginginfo"]["test_accuracy"] = test_accuracy
-            # cfg["logginginfo"]["BestAccuracy"] = best_accuracy
-            # cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
-            # cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
-            # logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
-            # if global_step != 1:
-            #     logger.info(server.log_title())
-            # server.logging_iteration(cfg, logger, global_step-1)
+            validation_start = time.time()
+            if cfg.validation == True:
+                test_loss, test_accuracy = validation(server, test_dataloader)
+                acc.append(test_accuracy)
+                if test_accuracy > best_accuracy:
+                    best_accuracy = test_accuracy
+                if cfg.use_tensorboard:
+                    # Add them to tensorboard
+                    writer.add_scalar("server_test_accuracy", test_accuracy, global_step)
+                    writer.add_scalar("server_test_loss", test_loss, global_step)
+            cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
+            cfg["logginginfo"]["PerIter_time"] = time.time() - local_start_time
+            cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
+            cfg["logginginfo"]["test_loss"] = test_loss
+            cfg["logginginfo"]["test_accuracy"] = test_accuracy
+            cfg["logginginfo"]["BestAccuracy"] = best_accuracy
+            cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
+            cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
+            logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
+            if global_step != 1:
+                logger.info(server.log_title())
+            server.logging_iteration(cfg, logger, global_step-1)
 
             # Break after max updates
             if global_step == cfg.num_epochs: 
                 break
-    # x = np.arange(len(acc))
-    # plt.plot(x,acc)
-    # plt.xlabel('update')
-    # plt.ylabel('acc')
-    # folder_path = os.getcwd()+"/"+ dataset_name + "_server_model"
-    # plt.savefig(folder_path+'/'+dataset_name+'_acc.png')
-    # plt.close()
+    x = np.arange(len(acc))
+    plt.plot(x,acc)
+    plt.xlabel('update')
+    plt.ylabel('acc')
+    folder_path = os.getcwd()+"/output_"+ dataset_name + "_server_model"
+    plt.savefig(folder_path+'/'+dataset_name+'_acc.png')
+    plt.close()
     post_analysis(server, weights, model, loss_fn, num_clients, cfg, test_dataset, dataset_name)
     # Cancel outstanding requests
     for recv_req in recv_reqs:

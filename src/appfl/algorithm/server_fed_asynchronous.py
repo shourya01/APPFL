@@ -89,3 +89,5 @@ class ServerFedAsynchronous(FedServer):
                     + str(round(cfg.logginginfo.Elapsed_time, 2))
                     + "\n"
                 )
+    def reload(self, global_state: dict):
+        self.model.load_state_dict(global_state)
