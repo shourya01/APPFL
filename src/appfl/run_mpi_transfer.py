@@ -102,8 +102,9 @@ def run_server(
     weight = comm.scatter(weight, root=0)
 
     # TODO: do we want to use root as a client?
-    print(type(num_clients),type(num_clients-1),type(torch.tensor(num_clients-1)))
-    print(num_clients)
+    # print(type(num_clients),type(num_clients-1),type(torch.tensor(num_clients-1)))
+    # print(num_clients)
+    # print(cfg.fed.servername)
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), loss_fn, torch.tensor(num_clients-1), device, **cfg.fed.args
     )
@@ -115,7 +116,7 @@ def run_server(
     test_accuracy = 0.0
     best_accuracy = 0.0
     for t in range(cfg.num_epochs):
-        print(f"### training {t} th epoch")
+        # print(f"### training {t} th epoch")
         per_iter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
 
@@ -128,7 +129,7 @@ def run_server(
         local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
                 
-        print("waiting for local starts")
+        # print("waiting for local starts")
         local_states= [None for i in range(num_clients-1)]        
         for rank in range(comm_size):
             ls = ""
@@ -138,19 +139,19 @@ def run_server(
                 for _, cid in enumerate(num_client_groups[rank - 1]):
                     local_states[cid] = comm.recv(source=rank, tag=cid)
                     indices = list(local_states[cid].keys())
-                    print(cid, ":", indices)
+                    # print(cid, ":", indices)
         
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
-        print("local states done")
+        # print("local states done")
         
-        print("Start Server Update")
+        # print("Start Server Update")
         global_update_start = time.time()
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
-        print("Server Update is done")
+        # print("Server Update is done")
 
-        print("Target Server Update")
+        # print("Target Server Update")
         #TODO: add another update based on the new global model and the target data ######
         target_update_start = time.time()
         batchsize = cfg.train_data_batch_size
@@ -159,10 +160,37 @@ def run_server(
         output_filename = cfg.output_filename + "_client_target" 
         outfile = client_log(cfg.output_dirname, output_filename)
 
-        server_2 = eval(cfg.fed.servername)(
-            weights, copy.deepcopy(server.model), loss_fn, torch.tensor(1), device, **cfg.fed.args
-        )
+        # server_2 = eval(cfg.fed.servername)(
+        #     [1], copy.deepcopy(server.model), loss_fn, torch.tensor(1), device, **cfg.fed.args
+        # )
+        # global_state = server.model.state_dict()
+        # cfg.fed.args.optim_args.lr /= 5
+        # client = eval(cfg.fed.clientname)(
+        #     0,#num_clients,
+        #     1,
+        #     copy.deepcopy(model),
+        #     loss_fn,
+        #     DataLoader(
+        #         target_train_dataset[0],
+        #         num_workers=cfg.num_workers,
+        #         batch_size=batchsize,
+        #         shuffle=cfg.train_data_shuffle,
+        #         pin_memory=True,
+        #     ),
+        #     cfg,
+        #     outfile,
+        #     test_dataloader,
+        #     **cfg.fed.args,
+        # )
+        # client.model.load_state_dict(global_state)
+        # ls = []
+        # ls.append(client.update())
+        # server_2.update(ls)
+        # global_state = server_2.model.state_dict()
+        # server.model.load_state_dict(global_state)
+        # cfg.fed.args.optim_args.lr *= 5
         global_state = server.model.state_dict()
+        cfg.fed.args.optim_args.lr /= 5
         client = eval(cfg.fed.clientname)(
             0,#num_clients,
             1,
@@ -181,12 +209,9 @@ def run_server(
             **cfg.fed.args,
         )
         client.model.load_state_dict(global_state)
-        ls = []
-        ls.append(client.update())
-        print('len(ls)=',len(ls)) 
-        server_2.update(ls)
-        global_state = server_2.model.state_dict()
+        global_state = client.model.state_dict()
         server.model.load_state_dict(global_state)
+        cfg.fed.args.optim_args.lr *= 5
         cfg["logginginfo"]["TargetUpdate_time"] = time.time() - target_update_start
 
         # validation

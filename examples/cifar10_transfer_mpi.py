@@ -12,7 +12,7 @@ from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.utils import get_model
 
-import appfl.run_serial as rs
+import appfl.run_serial_transfer as rs
 import appfl.run_mpi_transfer as rm
 from mpi4py import MPI
 
@@ -38,16 +38,21 @@ parser.add_argument('--model', type=str, default="CNN")
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
 
+parser.add_argument('--pretrained', type=bool, default=True)
+parser.add_argument('--frozen_feature_layers', type=bool, default=False)
+parser.add_argument('--resnet', type=str, default='resnet152')
+parser.add_argument('--hidden_size', type=int, default=512)
+parser.add_argument('--resnet_classes', type=int, nargs='+', default=[2,3,2,10])
 
 ## clients
 parser.add_argument('--num_clients', type=int, default=1)    
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=20)    
+parser.add_argument('--num_local_epochs', type=int, default=1)    
 
 ## server
 parser.add_argument('--server', type=str, default="ServerFedAvg")    
-parser.add_argument('--num_epochs', type=int, default=1)    
+parser.add_argument('--num_epochs', type=int, default=20)    
 
 parser.add_argument('--server_lr', type=float, required=False)    
 parser.add_argument('--mparam_1', type=float, required=False)    
@@ -224,7 +229,7 @@ def main():
             rm.run_client(cfg, comm, model, loss_fn, args.num_clients-1, train_datasets, test_dataset)
         print("------DONE------", comm_rank)
     else:
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, target_train_datasets)
  
   
 
