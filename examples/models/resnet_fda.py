@@ -41,7 +41,8 @@ class ResNetClassifier(nn.Module):
         x = self.leaky_relu(self.resnet(x))
         x = self.leaky_relu(self.linear(x))
 
-        return torch.sigmoid(x)
+        # return torch.sigmoid(x)
+        return x
 
 class ResnetMultiTaskNet(nn.Module):
     """
@@ -50,7 +51,7 @@ class ResnetMultiTaskNet(nn.Module):
 
     num_classes: a list of ints to define how many outputs we need for each task.
     """
-    def __init__(self, pretrained=True, frozen_feature_layers=False, resnet='resnet152', hidden_size=512, num_classes=[2,3,2,10]):
+    def __init__(self, pretrained=True, frozen_feature_layers=False, resnet='resnet152', hidden_size=512, num_classes=[1,3,2,10]):
         super().__init__()
         if resnet == 'resnet18':
             self.resnet = models.resnet18(pretrained=True)

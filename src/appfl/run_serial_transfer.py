@@ -174,7 +174,11 @@ def run_serial(
         # validation
         validation_start = time.time()
         if cfg.validation == True:
-            test_loss, test_accuracy = validation(server, test_dataloader)
+            # test_loss, test_accuracy = validation(server, test_dataloader)
+            if cfg.fed.clientname == 'FedMTLClient':
+                test_loss, test_accuracy = validation_MTL(server, test_dataloader)
+            else:
+                test_loss, test_accuracy = validation(server, test_dataloader)
 
             if cfg.use_tensorboard:
                 # Add them to tensorboard

@@ -14,7 +14,7 @@ from models.utils import get_model
 
 import appfl.run_serial_transfer as rs
 import appfl.run_mpi_transfer as rm
-from mpi4py import MPI
+# from mpi4py import MPI
 
 import argparse
 
@@ -64,6 +64,7 @@ args = parser.parse_args()
 args.save_model_state_dict = False
 
 if torch.cuda.is_available():
+    print("using cuda!!!!")
     args.device="cuda"
 
 
@@ -136,17 +137,18 @@ def get_data():
 ## Run
 def main():
     
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size() 
-
-    ## Reproducibility
+    # comm = MPI.COMM_WORLD
+    # comm_rank = comm.Get_rank()
+    # comm_size = comm.Get_size() 
+    print("start working")
+    # Reproducibility
     set_seed(1)
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
 
     cfg.device = args.device
+    # cfg.device_server = args.device
     cfg.save_model_state_dict = args.save_model_state_dict
 
     ## dataset
@@ -163,7 +165,7 @@ def main():
     ## server
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
-
+    
     ## outputs        
     cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr)    
     if args.server_lr != None:
@@ -222,15 +224,15 @@ def main():
  
     
     """ Running """
-    if comm_size > 1:
-        if comm_rank == 0:
-            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, target_train_datasets)
-        else:
-            rm.run_client(cfg, comm, model, loss_fn, args.num_clients-1, train_datasets, test_dataset)
-        print("------DONE------", comm_rank)
-    else:
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, target_train_datasets)
- 
+    # if comm_size > 1:
+    #     if comm_rank == 0:
+    #         rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, target_train_datasets)
+    #     else:
+    #         rm.run_client(cfg, comm, model, loss_fn, args.num_clients-1, train_datasets, test_dataset)
+    #     print("------DONE------", comm_rank)
+    # else:
+    #     rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, target_train_datasets)
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, target_train_datasets)
   
 
 if __name__ == "__main__":
@@ -242,4 +244,4 @@ if __name__ == "__main__":
 # To run MPI:
 # mpiexec -np 2 python ./cifar10_transfer_mpi.py
 # To run:
-# python ./cifar10_transfer_mpi.py
+# python ./cifar10_transfer_mpi.py --num_clients 5

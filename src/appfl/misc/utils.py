@@ -23,14 +23,20 @@ def validation(self, dataloader):
             tmpcnt += 1
             tmptotal += len(target)
             img = img.to(self.device)
-            target = target.to(self.device)
+            target = target.unsqueeze(1).to(self.device)
             output = self.model(img)
-            loss += self.loss_fn(output, target).item()
+            
+            target = target.type_as(output)
+            probs = torch.sigmoid(output)
+            pred = probs > 0.5
+                
+            cur_loss = self.loss_fn(probs, target)
+            loss += cur_loss.item()
 
-            if output.shape[1] == 1:
-                pred = torch.round(output)
-            else:
-                pred = output.argmax(dim=1, keepdim=True)
+            # if output.shape[1] == 1:
+            #     pred = torch.round(output)
+            # else:
+            #     pred = output.argmax(dim=1, keepdim=True)
 
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -42,6 +48,49 @@ def validation(self, dataloader):
 
     return loss, accuracy
 
+def validation_MTL(self, dataloader):
+
+    if self.loss_fn is None or dataloader is None:
+        return 0.0, 0.0
+
+    self.model.to(self.device)
+    self.model.eval()
+
+    loss = 0
+    correct = 0
+    tmpcnt = 0
+    tmptotal = 0
+    with torch.no_grad():
+        for sample in dataloader:          
+            tmpcnt += 1      
+            data = sample['img'].to(self.device)
+            targets = sample['targets']
+            target = targets[0].unsqueeze(1).to(self.device)
+            tmptotal += len(target)               
+            preds_all = self.model(data)
+            output = preds_all[0]
+            
+            target = target.type_as(output)
+            probs = torch.sigmoid(output)
+            pred = probs > 0.5
+            
+            cur_loss = self.loss_fn[0](probs, target)
+            loss += cur_loss.item()
+            
+            # if output.shape[1] == 1:
+            #     pred = torch.round(output)
+            # else:
+            #     pred = output.argmax(dim=1, keepdim=True)
+
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    # FIXME: do we need to sent the model to cpu again?
+    # self.model.to("cpu")
+
+    loss = loss / tmpcnt
+    accuracy = 100.0 * correct / tmptotal
+
+    return loss, accuracy
 
 def create_custom_logger(logger, cfg: DictConfig):
 
