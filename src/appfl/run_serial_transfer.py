@@ -6,6 +6,7 @@ from torch.optim import *
 from torch.utils.data import DataLoader
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from omegaconf import DictConfig
 
@@ -117,6 +118,8 @@ def run_serial(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
+    acc = []
+    loss = []
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
 
@@ -143,18 +146,19 @@ def run_serial(
         target_update_start = time.time()
         batchsize = cfg.train_data_batch_size
         if cfg.batch_training == False:
-            batchsize = len(target_train_dataset[0])
+            batchsize = len(target_train_dataset)
         output_filename = cfg.output_filename + "_client_target" 
         outfile = client_log(cfg.output_dirname, output_filename)
         global_state = server.model.state_dict()
         cfg.fed.args.optim_args.lr /= 5
-        client = eval(cfg.fed.clientname)(
+        # client = eval(cfg.fed.clientname)(
+        client = ClientOptim(
             0,#num_clients,
             1,
             copy.deepcopy(model),
             loss_fn,
             DataLoader(
-                target_train_dataset[0],
+                target_train_dataset,
                 num_workers=cfg.num_workers,
                 batch_size=batchsize,
                 shuffle=cfg.train_data_shuffle,
@@ -165,9 +169,18 @@ def run_serial(
             test_dataloader,
             **cfg.fed.args,
         )
+        server2 = eval(cfg.fed.servername)(
+            [1], copy.deepcopy(model), loss_fn, 1, cfg.device, **cfg.fed.args
+        )
+        server2.model.to(cfg.device)
         client.model.load_state_dict(global_state)
-        global_state = client.model.state_dict()
-        server.model.load_state_dict(global_state)
+        server2.model.load_state_dict(global_state)
+        # global_state = client.model.state_dict()
+        # server.model.load_state_dict(global_state)
+        # 
+        server2.update([client.update()])
+        server.model.load_state_dict(server2.model.state_dict())
+        #
         cfg.fed.args.optim_args.lr *= 5
         cfg["logginginfo"]["TargetUpdate_time"] = time.time() - target_update_start
 
@@ -193,6 +206,8 @@ def run_serial(
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
         cfg["logginginfo"]["test_loss"] = test_loss
         cfg["logginginfo"]["test_accuracy"] = test_accuracy
+        acc.append(test_accuracy)
+        loss.append(test_loss)
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)
@@ -203,6 +218,12 @@ def run_serial(
                 save_model_iteration(t + 1, server.model, cfg)
 
     server.logging_summary(cfg, logger)
+    plt.plot(np.arange(cfg.num_epochs),acc)
+    plt.savefig('%s_acc_%f_%d_epoch.png' %(cfg.fed.clientname, cfg.fed.args.optim_args.lr,cfg.num_epochs))
+    plt.close()
+    plt.plot(np.arange(cfg.num_epochs),loss)
+    plt.savefig('%s_loss_%f_%d_epoch.png'%(cfg.fed.clientname, cfg.fed.args.optim_args.lr,cfg.num_epochs))
+    plt.close()
 
     for k, client in enumerate(clients):
         client.outfile.close()

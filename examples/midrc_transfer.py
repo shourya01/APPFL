@@ -38,7 +38,7 @@ parser.add_argument('--dataset', type=str, default="MIDRC")
 # parser.add_argument('--model', type=str, default="resnet")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)  
-
+parser.add_argument('--multitask', type=bool, default=False)
 
 parser.add_argument("--base_data_path", type=str, default='/projects/bbvf/enyij2/data/midrc')
 parser.add_argument('--data_aug_times', type=int, default=1)
@@ -166,8 +166,8 @@ def get_data_MTL(target, states, transform):
         for i in range(args.num_clients):
             if i != target and mode == 'test':
                 continue
-            elif i == target and mode == 'train':
-                dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode], n_samples=args.n_target_samples)
+            elif i == target:
+                dataset = MidrcDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode], n_samples=args.n_target_samples)
             else:
                 dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
             dls[mode].append(dataset)
@@ -176,6 +176,7 @@ def get_data_MTL(target, states, transform):
 def get_model():
     ## User-defined model
     if args.client == 'FedMTLClient':
+    # if args.multitask == True:
         model = ResnetMultiTaskNet(resnet=args.resnet, hidden_size=args.hidden_size)
     else:
         model = ResNetClassifier(resnet=args.resnet, hidden_size=args.hidden_size)
@@ -201,9 +202,14 @@ def main():
     cfg.train_data_batch_size = args.train_data_batch_size
     cfg.test_data_batch_size = args.test_data_batch_size
     cfg.train_data_shuffle = True
+    cfg.multitask = args.multitask
 
     ## clients
-    cfg.fed.clientname = args.client
+    # cfg.fed.clientname = args.client
+    if args.multitask == True:
+        cfg.fed.clientname = 'FedMTLClient'
+    else:
+        cfg.fed.clientname = 'ClientOptim'
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
@@ -239,7 +245,8 @@ def main():
     """ User-defined model """    
     model = get_model() 
     # loss_fn = torch.nn.CrossEntropyLoss()   
-    if args.client == 'FedMTLClient':
+    # if args.client == 'FedMTLClient':
+    if args.multitask == True:
         criterion_covid = torch.nn.BCEWithLogitsLoss(reduction='mean')
         criterion_race = torch.nn.CrossEntropyLoss()
         criterion_sex = torch.nn.CrossEntropyLoss()
@@ -276,11 +283,12 @@ def main():
     print("begin loading data")
     # train_datasets, test_dataset, target_train_datasets = get_data()
     states = ['IL', 'NC', 'CA', 'IN', 'TX']
-    if args.client == 'FedMTLClient':
+    # if args.client == 'FedMTLClient':
+    if args.multitask == True:
         train_datasets, test_dataset, target_train_datasets = get_data_MTL(args.target, states, transform)
     else:
         train_datasets, test_dataset, target_train_datasets = get_data(args.target, states, transform)
-
+    # print("target_train_datasets:", np.shape(np.array(target_train_datasets)))
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
