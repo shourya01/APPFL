@@ -51,7 +51,7 @@ def run_serial(
         from tensorboardX import SummaryWriter
 
         writer = SummaryWriter(
-            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
+            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients-1)
         )
 
     """ log for clients"""
@@ -63,10 +63,15 @@ def run_serial(
     """ weight calculation """
     total_num_data = 0
     for k in range(cfg.num_clients-1):
+        if k == cfg.fed.args.target:
+            continue
         total_num_data += len(train_data[k])
 
     weights = {}
     for k in range(cfg.num_clients-1):
+        if k == cfg.fed.args.target:
+            weights[k] = 0
+            continue
         weights[k] = len(train_data[k]) / total_num_data
 
     "Run validation if test data is given or the configuration is enabled."
@@ -112,7 +117,7 @@ def run_serial(
             **cfg.fed.args,
         )
         for k in range(cfg.num_clients-1)
-    ] 
+    ]
     
     start_time = time.time()
     test_loss = 0.0
@@ -129,6 +134,8 @@ def run_serial(
 
         local_update_start = time.time()
         for k, client in enumerate(clients):
+            if k == cfg.fed.args.target:
+                continue
             
             ## initial point for a client model            
             client.model.load_state_dict(global_state)
@@ -144,28 +151,30 @@ def run_serial(
 
         #TODO: add another update based on the new global model and the target data ######
         target_update_start = time.time()
-        batchsize = cfg.train_data_batch_size
-        if cfg.batch_training == False:
-            batchsize = len(target_train_dataset)
+        
         output_filename = cfg.output_filename + "_client_target" 
-        outfile = client_log(cfg.output_dirname, output_filename)
+        outfile_ = client_log(cfg.output_dirname, output_filename)
         global_state = server.model.state_dict()
         cfg.fed.args.optim_args.lr /= 5
-        # client = eval(cfg.fed.clientname)(
-        client = ClientOptim(
-            0,#num_clients,
+
+        batchsize_ = cfg.train_data_batch_size
+        if cfg.batch_training == False:
+            batchsize_ = len(target_train_dataset)
+
+        client = eval(cfg.fed.clientname)(
+            cfg.num_clients-1,
             1,
             copy.deepcopy(model),
             loss_fn,
             DataLoader(
                 target_train_dataset,
                 num_workers=cfg.num_workers,
-                batch_size=batchsize,
+                batch_size=batchsize_,
                 shuffle=cfg.train_data_shuffle,
                 pin_memory=True,
             ),
             cfg,
-            outfile,
+            outfile_,
             test_dataloader,
             **cfg.fed.args,
         )
@@ -175,19 +184,15 @@ def run_serial(
         server2.model.to(cfg.device)
         client.model.load_state_dict(global_state)
         server2.model.load_state_dict(global_state)
-        # global_state = client.model.state_dict()
-        # server.model.load_state_dict(global_state)
-        # 
         server2.update([client.update()])
         server.model.load_state_dict(server2.model.state_dict())
-        #
+
         cfg.fed.args.optim_args.lr *= 5
         cfg["logginginfo"]["TargetUpdate_time"] = time.time() - target_update_start
 
         # validation
         validation_start = time.time()
         if cfg.validation == True:
-            # test_loss, test_accuracy = validation(server, test_dataloader)
             if cfg.fed.clientname == 'FedMTLClient':
                 test_loss, test_accuracy = validation_MTL(server, test_dataloader)
             else:
@@ -216,14 +221,15 @@ def run_serial(
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
                 save_model_iteration(t + 1, server.model, cfg)
+        plt.plot(np.arange(len(acc)),acc)
+        plt.savefig('%s_acc_%f_%d_epoch.png' %(cfg.fed.clientname, cfg.fed.args.optim_args.lr,cfg.num_epochs))
+        plt.close()
+        plt.plot(np.arange(len(loss)),loss)
+        plt.savefig('%s_loss_%f_%d_epoch.png'%(cfg.fed.clientname, cfg.fed.args.optim_args.lr,cfg.num_epochs))
+        plt.close()
 
     server.logging_summary(cfg, logger)
-    plt.plot(np.arange(cfg.num_epochs),acc)
-    plt.savefig('%s_acc_%f_%d_epoch.png' %(cfg.fed.clientname, cfg.fed.args.optim_args.lr,cfg.num_epochs))
-    plt.close()
-    plt.plot(np.arange(cfg.num_epochs),loss)
-    plt.savefig('%s_loss_%f_%d_epoch.png'%(cfg.fed.clientname, cfg.fed.args.optim_args.lr,cfg.num_epochs))
-    plt.close()
+    
 
     for k, client in enumerate(clients):
         client.outfile.close()

@@ -135,7 +135,6 @@ class ServerFedGP(FedServer):
                     + "\n"
                 )
 
-class FedMTLClient(BaseClient):
     def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs):
         super(FedMTLClient, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader

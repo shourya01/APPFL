@@ -22,9 +22,6 @@ class Config:
     # Number of training epochs
     num_epochs: int = 2
 
-    # Training dataset multitask or not
-    multitask: bool = False
-
     # Number of workers in DataLoader
     num_workers: int = 0
 
