@@ -161,8 +161,9 @@ def run_serial(
         if cfg.batch_training == False:
             batchsize_ = len(target_train_dataset)
 
+        cfg.fed.args.target = 0
         client = eval(cfg.fed.clientname)(
-            cfg.num_clients-1,
+            0,
             1,
             copy.deepcopy(model),
             loss_fn,
@@ -186,6 +187,7 @@ def run_serial(
         server2.model.load_state_dict(global_state)
         server2.update([client.update()])
         server.model.load_state_dict(server2.model.state_dict())
+        cfg.fed.args.target = cfg.num_clients-1
 
         cfg.fed.args.optim_args.lr *= 5
         cfg["logginginfo"]["TargetUpdate_time"] = time.time() - target_update_start
