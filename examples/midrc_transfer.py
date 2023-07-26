@@ -158,7 +158,7 @@ def get_data(target, states, transform):
             else:
                 dataset = MidrcDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
             dls[mode].append(dataset)
-    return dls['train'][1:], dls['test'][0], dls['train'][0]
+    return dls['train'][0:-1], dls['test'][0], dls['train'][-1]
 
 def get_data_MTL(target, states, transform):
     dls = {'train':[], 'test':[]}
@@ -166,12 +166,12 @@ def get_data_MTL(target, states, transform):
         for i in range(args.num_clients):
             if i != target and mode == 'test':
                 continue
-            elif i == target:
+            elif i == target and mode == 'train':
                 dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode], n_samples=args.n_target_samples)
             else:
                 dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
             dls[mode].append(dataset)
-    return dls['train'][1:], dls['test'][0], dls['train'][0]
+    return dls['train'][0:-1], dls['test'][0], dls['train'][-1]
 
 def get_model():
     ## User-defined model
