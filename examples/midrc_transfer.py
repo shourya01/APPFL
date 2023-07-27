@@ -198,8 +198,8 @@ def main():
     cfg.save_model_state_dict = args.save_model_state_dict
 
     ## dataset
-    cfg.train_data_batch_size = args.train_data_batch_size
-    cfg.test_data_batch_size = args.test_data_batch_size
+    cfg.train_data_batch_size = args.source_batch_size
+    cfg.test_data_batch_size = args.target_batch_size
     cfg.train_data_shuffle = True
 
     ## clients
