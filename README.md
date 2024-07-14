@@ -1,3 +1,5 @@
+This is a **work-in-progress** for implementation of large-scale load forecasting. For the original README, see below.
+
 <p align="center">
   <a href="http://appfl.rtfd.io"><img src="https://github.com/APPFL/APPFL/blob/main/docs/_static/logo/logo_small.png?raw=true" alt="APPFL logo" style="width: 40%; height: auto;"></a>
 </p>
