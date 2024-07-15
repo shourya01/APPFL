@@ -47,8 +47,9 @@ def _evaluate_model_on_tests(model, test_dataloader, metric):
             y_pred_final.append(y_pred.numpy())
             y_true_final.append(y.numpy())
 
-        y_true_final = np.concatenate(y_true_final)
-        y_pred_final = np.concatenate(y_pred_final)
+        if isinstance(y_true_final[0],np.ndarray):
+            y_true_final = np.concatenate(y_true_final) # COMMENT_SB: when i/o are tuples, this doesnt work
+            y_pred_final = np.concatenate(y_pred_final) # COMMENT_SB: when i/o are tuples, this doesnt work
         accuracy = float(metric(y_true_final, y_pred_final))
     return accuracy
 

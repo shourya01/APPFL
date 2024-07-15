@@ -36,7 +36,8 @@ class ClientStepOptim(BaseClient):
                 data, target = next(data_iter)
             except: # End of one local epoch
                 train_loss /= len(self.dataloader)
-                target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
+                if isinstance(target_true[0],np.ndarray):
+                    target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred) # COMMENT_SB: when i/o are tuples, this doesnt work
                 train_accuracy = float(self.metric(target_true, target_pred))
                 ## Validation
                 if self.cfg.validation == True and self.test_dataloader != None:
@@ -59,7 +60,7 @@ class ClientStepOptim(BaseClient):
                     )
                 ## Reset the data iterator
                 data_iter = iter(self.dataloader)
-                data, target = next(data_iter)
+                data, target = next(data_iter) # COMMENT_SB: we are possibly wasting one data pair here every time
 
                 ## Reset the train metric
                 train_loss, target_true, target_pred = 0, [], []

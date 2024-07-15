@@ -138,7 +138,7 @@ def run_client(
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
-    test_data: Dataset = Dataset(),
+    test_data: Union[List,Dataset] = Dataset(), # COMMENT_SB: workaround
     metric: Any = None
 ):
     """
@@ -179,16 +179,16 @@ def run_client(
             batchsize[cid] = len(train_data[cid])
 
     ## Run validation if test data is given or the configuration is enabled.
-    if cfg.validation == True and len(test_data) > 0:
-        test_dataloader = DataLoader(
-            test_data,
+    if cfg.validation == True: # COMMENT_SB: workaround to allow each client to have distict test dataset
+        test_dataloader = [DataLoader(
+            test_data[c] if isinstance(test_data,list) else test_data,
             num_workers=cfg.num_workers,
             batch_size=cfg.test_data_batch_size,
             shuffle=cfg.test_data_shuffle,
-        )
+        ) for c in range(cfg.num_clients)]
     else:
         cfg.validation = False
-        test_dataloader = None
+        test_dataloader = [None for _ in range(cfg.num_clients)]
 
     if "cuda" in cfg.device:
         ## Check available GPUs if CUDA is used
@@ -215,7 +215,7 @@ def run_client(
             ),
             copy.deepcopy(cfg),
             outfile[cid],
-            test_dataloader,
+            test_dataloader[cid],
             metric,
             **cfg.fed.args,
         )

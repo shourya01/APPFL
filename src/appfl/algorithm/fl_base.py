@@ -186,8 +186,9 @@ class BaseClient:
                 target_pred_final.append(output.detach().cpu().numpy())
                 target_true_final.append(target.detach().cpu().numpy())
             loss = loss / tmpcnt
-            target_true_final = np.concatenate(target_true_final)
-            target_pred_final = np.concatenate(target_pred_final)
+            if isinstance(target_true_final[0],np.ndarray):
+                target_true_final = np.concatenate(target_true_final) # COMMENT_SB: when i/o are tuples, this doesnt work
+                target_pred_final = np.concatenate(target_pred_final) # COMMENT_SB: when i/o are tuples, this doesnt work
             accuracy = float(self.metric(target_true_final, target_pred_final))
         self.model.train()
         return loss, accuracy

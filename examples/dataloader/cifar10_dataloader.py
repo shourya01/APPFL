@@ -67,5 +67,14 @@ def get_cifar10(
     # Data readiness
     if dr_metrics is not None:
         generate_readiness_report(train_datasets,dr_metrics)
+        
+    if isinstance(test_dataset,list):
+        print("Test type (list): "+ str(type(test_dataset[0])),flush=True)
+    else:
+        print("Test type (notlist): "+str(type(test_dataset)),flush=True)
+    if isinstance(test_dataset,list):
+        print("Train type (list): "+ str(type(test_dataset[0])),flush=True)
+    else:
+        print("Train type (notlist): "+str(type(test_dataset)),flush=True)
 
     return train_datasets, test_dataset
