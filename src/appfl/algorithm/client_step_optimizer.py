@@ -35,36 +35,29 @@ class ClientStepOptim(BaseClient):
             try:
                 data, target = next(data_iter)
             except: # End of one local epoch
-                train_loss /= len(self.dataloader)
-                if isinstance(target_true[0],np.ndarray):
-                    target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred) # COMMENT_SB: when i/o are tuples, this doesnt work
-                train_accuracy = float(self.metric(target_true, target_pred))
+                # train_loss /= len(self.dataloader)
+                # if isinstance(target_true[0],np.ndarray):
+                #     target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred) # COMMENT_SB: when i/o are tuples, this doesnt work
+                # train_accuracy = float(self.metric(target_true, target_pred))
                 ## Validation
-                if self.cfg.validation == True and self.test_dataloader != None:
-                    test_loss, test_accuracy = super(ClientStepOptim, self).client_validation()
-                else:
-                    test_loss, test_accuracy = 0, 0
-                per_iter_time = time.time() - start_time
-                super(ClientStepOptim, self).client_log_content(epoch, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
+                # if self.cfg.validation == True and self.test_dataloader != None:
+                #     test_loss, test_accuracy = super(ClientStepOptim, self).client_validation()
+                # else:
+                #     test_loss, test_accuracy = 0, 0
+                # per_iter_time = time.time() - start_time
+                # super(ClientStepOptim, self).client_log_content(epoch, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
                 
+                ## Move epoch forward
                 epoch += 1
 
-                ## save model state dict
-                if self.cfg.save_model_state_dict == True:
-                    path = self.cfg.output_dirname + "/client_%s" % (self.id)
-                    if not os.path.exists(path):
-                        os.makedirs(path)
-                    torch.save(
-                        self.model.state_dict(),
-                        os.path.join(path, "%s_%s.pt" % (self.round, epoch)),
-                    )
+                
                 ## Reset the data iterator
                 data_iter = iter(self.dataloader)
-                data, target = next(data_iter) # COMMENT_SB: we are possibly wasting one data pair here every time
+                data, target = next(data_iter)
 
                 ## Reset the train metric
-                train_loss, target_true, target_pred = 0, [], []
-                start_time = time.time()
+                # train_loss, target_true, target_pred = 0, [], []
+                # start_time = time.time()
 
             data = data.to(self.cfg.device)
             target = target.to(self.cfg.device)
@@ -80,7 +73,26 @@ class ClientStepOptim(BaseClient):
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)
         
         self.round += 1
+        
+        ## save client state dicts if needed
+        if self.cfg.save_model_state_dict == True:
+            path = self.cfg.output_dirname + "/client_%s" % (self.id)
+            if (self.round + 1) % self.cfg.checkpoints_interval == 0 or self.round + 1 == self.cfg.num_epochs:
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                torch.save(
+                    self.model.state_dict(),
+                    os.path.join(path, "%s_%s.pt" % (self.round, epoch)),
+                )
 
+        ## do test set computation over here
+        if isinstance(target_true[0],np.ndarray):
+            target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)        
+        train_accuracy = float(self.metric(target_true, target_pred))
+        test_loss, test_accuracy = super(ClientStepOptim, self).client_validation()
+        per_iter_time = time.time() - start_time
+        super(ClientStepOptim, self).client_log_content(epoch, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
+        
         ## Differential Privacy
         self.primal_state = copy.deepcopy(self.model.state_dict())
         if self.use_dp:

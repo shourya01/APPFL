@@ -113,8 +113,7 @@ def load_model(cfg: DictConfig):
 def save_model_iteration(t, model, cfg: DictConfig):
     
     dir = cfg.save_model_dirname
-    if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+    os.makedirs(dir,exist_ok=True)
 
     file_ext = ".pt"
     file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)

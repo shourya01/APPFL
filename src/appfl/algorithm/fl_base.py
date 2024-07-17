@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Dict, Optional, Any
 from torch.utils.data import DataLoader
+import inspect
 
 class BaseServer:
     """
@@ -168,6 +169,13 @@ class BaseClient:
             return 0.0, 0.0
         if self.metric is None:
             self.metric = self._default_metric
+            
+        def call_function_with_optional_kwarg(func, arg1, kwarg_name, kwarg_value):
+            params = inspect.signature(func).parameters
+            if kwarg_name in params:
+                return func(arg1, **{kwarg_name: kwarg_value})
+            else:
+                return func(arg1)
 
         device = self.cfg.device
         self.model.to(device)
@@ -181,6 +189,7 @@ class BaseClient:
                 tmpcnt += 1
                 data = data.to(device)
                 target = target.to(device)
+                output = call_function_with_optional_kwarg(self.model,data,'mode','test')
                 output = self.model(data)
                 loss += self.loss_fn(output, target).item()
                 target_pred_final.append(output.detach().cpu().numpy())
