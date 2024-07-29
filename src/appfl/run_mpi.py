@@ -183,7 +183,7 @@ def run_client(
         test_dataloader = [DataLoader(
             test_data[c] if isinstance(test_data,list) else test_data,
             num_workers=cfg.num_workers,
-            batch_size=cfg.test_data_batch_size,
+            batch_size=len(test_data[c]) if isinstance(test_data,list) else len(test_data), # COMMENT_SB: maybe will help with MASE in the future
             shuffle=cfg.test_data_shuffle,
         ) for c in range(cfg.num_clients)]
     else:

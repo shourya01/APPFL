@@ -58,7 +58,7 @@ def run_server(
         test_dataloader = DataLoader(
             test_dataset,
             num_workers=cfg.num_workers,
-            batch_size=cfg.test_data_batch_size,
+            batch_size=len(test_dataset), # COMMENT_SB: maybe will help with MASE in the future
             shuffle=cfg.test_data_shuffle,
         )
     else:
@@ -174,12 +174,21 @@ def run_client(
         test_dataloader = DataLoader(
             test_data,
             num_workers=cfg.num_workers,
-            batch_size=cfg.test_data_batch_size,
+            batch_size=len(test_data),
             shuffle=cfg.test_data_shuffle,
         )
     else:
         cfg.validation = False
         test_dataloader = None
+        
+    if "cuda" in cfg.device:
+        ## Check available GPUs if CUDA is used
+        num_clients = comm.Get_size()-1
+        num_gpu = torch.cuda.device_count()
+        client_per_gpu = math.ceil(num_clients/num_gpu)
+        cid = comm.Get_rank()-1
+        gpuindex = int(math.floor(cid/client_per_gpu))
+        cfg.device = f"cuda:{gpuindex}"
 
     client = eval(cfg.fed.clientname)(
         client_idx,
