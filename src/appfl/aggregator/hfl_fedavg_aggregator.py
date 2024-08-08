@@ -2,7 +2,6 @@ import os
 import copy
 import torch
 import pathlib
-from datetime import datetime
 from omegaconf import DictConfig
 from appfl.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any
@@ -17,6 +16,8 @@ class HFLFedAvgAggregator(BaseAggregator):
         self.model = model
         self.logger = logger
         self.aggregator_config = aggregator_config
+        self.server_learning_rate = aggregator_config.get('server_learning_rate', 1e-3)
+        self.replace = aggregator_config.get('replace',False)
 
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
@@ -59,8 +60,7 @@ class HFLFedAvgAggregator(BaseAggregator):
         if self.aggregator_config.get("do_checkpoint", False):
             checkpoint_dir = self.aggregator_config.get('checkpoint_dirname', './output/checkpoints')
             checkpoint_filename = self.aggregator_config.get('checkpoint_filename', 'global_model')
-            curr_time_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-            checkpoint_path = f"{checkpoint_dir}/{checkpoint_filename}_Server_{curr_time_str}.pth"
+            checkpoint_path = f"{checkpoint_dir}/{checkpoint_filename}_Node_{self.round}.pth"
             # Create the directory if it does not exist
             if not os.path.exists(checkpoint_dir):
                 pathlib.Path(checkpoint_dir).mkdir(parents=True, exist_ok=True)
@@ -84,6 +84,7 @@ class HFLFedAvgAggregator(BaseAggregator):
             self.step[name] = torch.zeros_like(self.model.state_dict()[name])
             
         for client_id, model in local_models.items():
+            print(f"Num1: {(1.0 / self.total_num_clients)}, Num2: {num_clients_dict.get(client_id, 1)}", flush=True)
             weight = (1.0 / self.total_num_clients) * num_clients_dict.get(client_id, 1)
             for name in self.named_parameters:
                 self.step[name] += weight * (model[name] - self.model.state_dict()[name])

@@ -3,6 +3,7 @@ import torch
 from omegaconf import DictConfig
 from appfl.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any
+import os, pathlib
 
 class FedAvgAggregator(BaseAggregator):
     def __init__(
@@ -15,12 +16,15 @@ class FedAvgAggregator(BaseAggregator):
         self.logger = logger
         self.aggregator_config = aggregator_config
         self.client_weights_mode = aggregator_config.get("client_weights_mode", "equal")
+        self.server_learning_rate = aggregator_config.get('server_learning_rate', 1e-3)
+        self.replace = aggregator_config.get('replace',False)
 
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
             self.named_parameters.add(name)
 
         self.step = {}
+        self.round = 0
 
     def get_parameters(self, **kwargs) -> Dict:
         return copy.deepcopy(self.model.state_dict())
@@ -29,6 +33,7 @@ class FedAvgAggregator(BaseAggregator):
         """
         Take the weighted average of local models from clients and return the global model.
         """
+        self.round += 1
         global_state = copy.deepcopy(self.model.state_dict())
         
         self.compute_steps(local_models)
@@ -40,9 +45,27 @@ class FedAvgAggregator(BaseAggregator):
                     param_sum += model[name]
                 global_state[name] = torch.div(param_sum, len(local_models))
             else:
-                global_state[name] += self.step[name]
+                if not self.replace:
+                    global_state[name] += self.server_learning_rate * self.step[name]
+                else:
+                    global_state[name] = self.step[name]
             
         self.model.load_state_dict(global_state)
+        
+        # Save the global model if needed
+        if self.aggregator_config.get("do_checkpoint", False):
+            checkpoint_dir = self.aggregator_config.get('checkpoint_dirname', './output/checkpoints')
+            checkpoint_filename = self.aggregator_config.get('checkpoint_filename', 'global_model')
+            checkpoint_path = f"{checkpoint_dir}/{checkpoint_filename}_Server_{self.round}.pth"
+            # Create the directory if it does not exist
+            if not os.path.exists(checkpoint_dir):
+                pathlib.Path(checkpoint_dir).mkdir(parents=True, exist_ok=True)
+            if self.round % self.aggregator_config.get("checkpoint_interval", 1) == 0:
+                torch.save(self.model.state_dict(), checkpoint_path)
+                self.logger.info(f"Saved global model to {checkpoint_path}")
+        else:
+            self.logger.info(f"Round {self.round} completed.")
+            
         return global_state
     
     def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):

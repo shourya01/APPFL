@@ -89,13 +89,12 @@ class ClientAgent:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
         
-    def save_checkpoint(self, checkpoint_path: Optional[str]=None) -> None:
+    def save_checkpoint(self, checkpoint_path: Optional[str]=None, round:int=0) -> None:
         """Save the model to a checkpoint file."""
         if checkpoint_path is None:
             output_dir = self.client_agent_config.train_configs.get("checkpoint_dirname", "./output")
             output_filename = self.client_agent_config.train_configs.get("checkpoint_filename", "checkpoint")
-            curr_time_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-            checkpoint_path = f"{output_dir}/{output_filename}_{self.get_id()}_{curr_time_str}.pth"
+            checkpoint_path = f"{output_dir}/{output_filename}_{self.get_id()}_{round}.pth"
             
         # Make sure the directory exists
         if not os.path.exists(os.path.dirname(checkpoint_path)):
