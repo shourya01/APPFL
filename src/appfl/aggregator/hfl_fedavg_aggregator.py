@@ -52,7 +52,7 @@ class HFLFedAvgAggregator(BaseAggregator):
                     param_sum += model[name] * num_clients_dict.get(client_id, 1)
                 global_state[name] = torch.div(param_sum, self.total_num_clients)
             else:
-                global_state[name] += self.step[name]
+                global_state[name] += self.server_learning_rate * self.step[name]
             
         self.model.load_state_dict(global_state)
         
@@ -84,7 +84,9 @@ class HFLFedAvgAggregator(BaseAggregator):
             self.step[name] = torch.zeros_like(self.model.state_dict()[name])
             
         for client_id, model in local_models.items():
-            print(f"Num1: {(1.0 / self.total_num_clients)}, Num2: {num_clients_dict.get(client_id, 1)}", flush=True)
             weight = (1.0 / self.total_num_clients) * num_clients_dict.get(client_id, 1)
             for name in self.named_parameters:
-                self.step[name] += weight * (model[name] - self.model.state_dict()[name])
+                if not self.replace:
+                    self.step[name] += weight * (model[name] - self.model.state_dict()[name])
+                else:
+                    self.step[name] += weight * (model[name])

@@ -84,6 +84,9 @@ class FedAvgAggregator(BaseAggregator):
             else:
                 weight = 1.0 / len(local_models)
             for name in self.named_parameters:
-                self.step[name] += weight * (model[name] - self.model.state_dict()[name])
+                if not self.replace:
+                    self.step[name] += weight * (model[name] - self.model.state_dict()[name])
+                else:
+                    self.step[name] += weight * (model[name])
     
 
