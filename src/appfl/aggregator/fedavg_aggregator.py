@@ -48,7 +48,7 @@ class FedAvgAggregator(BaseAggregator):
                 if not self.replace:
                     global_state[name] += self.server_learning_rate * self.step[name]
                 else:
-                    global_state[name] = self.step[name]
+                    global_state[name] = self.server_learning_rate * self.step[name]
             
         self.model.load_state_dict(global_state)
         
